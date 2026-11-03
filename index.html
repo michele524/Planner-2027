@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planner 2027 · Feliz Vida</title>
+<meta name="theme-color" content="#1159C4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Planner 2027">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&family=Open+Sans:wght@400;600;700&family=Dancing+Script:wght@600;700&family=Sacramento&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#1159C4; --blue-d:#0B3F8F; --blue-l:#4FA8E0; --sky:#9ED3F2; --mist:#EEF1F5; --paper:#fff;
+  --ink:#2A2F38; --ink-2:#5B6472; --line:#D9DEE6; --soft:#F6F8FB;
+  --sb:270px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--mist);color:var(--ink);font-family:"Open Sans",system-ui,sans-serif;font-size:15px;line-height:1.55}
+button{font:inherit;cursor:pointer}
+a{color:var(--blue)}
+/* ---------- layout ---------- */
+.app{display:flex;min-height:100vh}
+aside{width:var(--sb);flex:0 0 var(--sb);background:#fff;border-right:1px solid var(--line);position:sticky;top:0;height:100vh;overflow-y:auto;padding:22px 14px 40px}
+.brand{font-family:Montserrat;font-weight:900;letter-spacing:.18em;color:var(--blue);font-size:13px;text-align:center;line-height:1.35;padding:0 6px 4px}
+.brand .script{font-family:Sacramento;letter-spacing:0;font-weight:400;color:#6b6f76;font-size:30px;display:block;margin-top:-2px}
+.brand .yr{display:block;font-size:22px;letter-spacing:.08em;margin-top:2px}
+.save{display:flex;align-items:center;gap:6px;justify-content:center;font-size:11.5px;color:var(--ink-2);margin:10px 0 14px}
+.save i{width:8px;height:8px;border-radius:50%;background:#B0BEC5;display:inline-block}
+.save.ok i{background:#2E9E6A}.save.busy i{background:#F0A63A}.save.local i{background:#4FA8E0}.save.err i{background:#D64545}
+.today-btn{display:block;width:100%;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:10px;font-family:Montserrat;font-weight:700;font-size:13px;margin-bottom:16px}
+.today-btn:hover{background:var(--blue-d)}
+nav .grp{font-family:Montserrat;font-weight:800;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin:18px 8px 6px}
+nav a{display:flex;align-items:center;justify-content:space-between;gap:8px;text-decoration:none;color:var(--ink);padding:7px 10px;border-radius:8px;font-size:13.5px}
+nav a:hover{background:var(--soft)}
+nav a.on{background:#E6EFFC;color:var(--blue-d);font-weight:700}
+nav a .pg{font-size:10.5px;color:var(--ink-2);font-weight:600;min-width:34px;text-align:right}
+nav a .bar{height:3px;border-radius:3px;background:var(--line);width:34px;overflow:hidden;flex:0 0 34px}
+nav a .bar b{display:block;height:100%;background:var(--blue-l)}
+nav .months{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 4px}
+nav .months a{justify-content:center;padding:7px 0;font-size:12.5px;position:relative}
+nav .months a .dot{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);height:2px;border-radius:2px;background:var(--blue-l)}
+main{flex:1;min-width:0;padding:28px 28px 80px}
+.page{max-width:880px;margin:0 auto}
+.menu-btn{display:none}
+@media (max-width:900px){
+  aside{position:fixed;z-index:50;left:0;top:0;transform:translateX(-100%);transition:transform .25s;box-shadow:0 0 40px rgba(0,0,0,.15)}
+  aside.open{transform:none}
+  .menu-btn{display:flex;position:sticky;top:0;z-index:40;align-items:center;gap:10px;background:#fff;border:0;border-bottom:1px solid var(--line);width:100%;padding:12px 16px;font-family:Montserrat;font-weight:800;color:var(--blue);letter-spacing:.1em;font-size:12px}
+  main{padding:16px 12px 80px}
+  .scrim{position:fixed;inset:0;background:rgba(10,20,40,.3);z-index:45;display:none}
+  .scrim.on{display:block}
+}
+/* ---------- paper ---------- */
+.sheet{background:var(--paper);border-radius:18px;box-shadow:0 1px 2px rgba(20,40,80,.05),0 8px 30px rgba(20,40,80,.06);padding:40px 48px;margin-bottom:22px;position:relative;overflow:hidden}
+@media (max-width:600px){.sheet{padding:26px 20px}}
+.hero{position:relative;background:linear-gradient(160deg,#F7F8FA,#E9ECF1);border-radius:18px;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 24px;margin-bottom:22px;overflow:hidden}
+.hero .stars{position:absolute;inset:0;pointer-events:none}
+.hero h1{position:relative;font-family:Montserrat;font-weight:900;color:var(--blue);font-size:clamp(28px,4.6vw,44px);letter-spacing:.04em;line-height:1.08;margin:0;text-transform:uppercase}
+.hero .kicker{position:relative;font-family:Montserrat;font-weight:900;color:var(--blue);font-size:clamp(30px,5vw,48px);margin-bottom:6px}
+.hero .sub{position:relative;margin-top:14px;color:var(--ink-2);max-width:560px}
+.hero .script{position:relative;font-family:"Dancing Script";font-weight:700;color:var(--blue-d);font-size:clamp(38px,6vw,58px);line-height:1;margin-top:18px}
+.hero .quote{position:relative;font-family:Montserrat;font-weight:800;color:var(--blue);text-transform:uppercase;font-size:clamp(14px,2vw,18px);max-width:560px;margin-top:22px;line-height:1.3}
+.hero .quote small{display:block;font-size:11px;letter-spacing:.06em;margin-top:6px}
+.intro p{margin:0 0 12px}
+.intro .center{text-align:center;font-weight:700;color:var(--blue-d)}
+h2.sec{font-family:Montserrat;font-weight:800;color:var(--blue);font-size:19px;margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+h2.sec:first-child{margin-top:0}
+h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.q{margin:0 0 22px}
+.q label,.q .lbl{display:block;font-weight:600;margin-bottom:8px;color:var(--ink)}
+.q .lbl b,.q label b{color:var(--blue);font-family:Montserrat;font-weight:800;margin-right:4px}
+.hint{font-size:12.5px;color:var(--ink-2);margin:-4px 0 8px}
+textarea,input[type=text],input[type=date],input[type=number],input[type=email],input[type=password]{width:100%;font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--soft);transition:border-color .15s,background .15s;outline:none}
+textarea{resize:vertical;min-height:72px;line-height:1.6;background-image:repeating-linear-gradient(transparent,transparent 23px,#E4E8EF 23px,#E4E8EF 24px);background-attachment:local;background-position:0 10px}
+textarea:focus,input:focus{border-color:var(--blue-l);background-color:#fff}
+.rows{display:grid;gap:8px}
+.row{display:flex;align-items:center;gap:10px}
+.row .n{font-family:Montserrat;font-weight:800;color:var(--blue);width:22px;flex:0 0 22px;text-align:right}
+.row input[type=date]{width:170px;flex:0 0 170px}
+@media (max-width:600px){.row{flex-wrap:wrap}.row input[type=date]{flex:1 1 100%;margin-left:32px}}
+.scale{display:flex;flex-wrap:wrap;gap:6px}
+.scale button{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:#fff;font-family:Montserrat;font-weight:700;color:var(--ink-2)}
+.scale button:hover{border-color:var(--blue-l)}
+.scale button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip{display:inline-flex;gap:6px}
+.chip button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 16px;font-weight:700;color:var(--ink-2)}
+.chip button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:700px){.grid2,.grid3{grid-template-columns:1fr}}
+.card{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h4{margin:0 0 8px;font-family:Montserrat;font-weight:800;color:var(--blue);font-size:14px}
+.card textarea{background-color:#fff}
+.mantra{background:linear-gradient(135deg,#E8F1FD,#F5F9FF);border-left:4px solid var(--blue);border-radius:12px;padding:18px 22px;font-style:italic;color:var(--blue-d);margin:16px 0;text-align:right;font-weight:600}
+.banner{font-family:Montserrat;font-weight:900;text-transform:uppercase;color:var(--blue);text-align:center;font-size:clamp(18px,3vw,26px);line-height:1.2;padding:30px 10px;letter-spacing:.03em}
+.btn{border:0;background:var(--blue);color:#fff;border-radius:10px;padding:9px 16px;font-weight:700;font-size:13.5px}
+.btn:hover{background:var(--blue-d)}
+.btn.ghost{background:#fff;color:var(--blue);border:1.5px solid var(--line)}
+.btn.ghost:hover{border-color:var(--blue-l)}
+.btn.danger{background:#fff;color:#C23B3B;border:1.5px solid #F0CACA}
+.pager{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
+.pager a{flex:1;text-decoration:none;background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 1px 2px rgba(20,40,80,.05);color:var(--ink)}
+.pager a small{display:block;color:var(--ink-2);font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+.pager a b{font-family:Montserrat;color:var(--blue)}
+.pager a.nx{text-align:right}
+/* roda */
+.roda{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:26px;align-items:center}
+@media (max-width:800px){.roda{grid-template-columns:1fr}}
+.step{margin-bottom:14px}
+.step .t{font-weight:700;font-size:13.5px;display:flex;justify-content:space-between;gap:8px}
+.step .t span{font-family:Montserrat;color:var(--blue)}
+.step .d{font-size:12px;color:var(--ink-2);margin-bottom:4px}
+input[type=range]{width:100%;accent-color:var(--blue)}
+/* financeiro */
+table.fin{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
+table.fin th{font-family:Montserrat;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--blue);padding:10px;text-align:left}
+table.fin th:first-child{border-top-left-radius:10px}table.fin th:last-child{border-top-right-radius:10px}
+table.fin td{border-bottom:1px solid var(--line);padding:6px;vertical-align:top}
+table.fin td.p{font-family:Montserrat;font-weight:800;color:var(--blue);font-size:12px;width:120px;background:var(--soft)}
+table.fin td.p small{display:block;font-weight:600;color:var(--ink-2);font-family:"Open Sans"}
+table.fin input{background:#fff;padding:7px 9px}
+.tot{text-align:right;font-family:Montserrat;font-weight:800;color:var(--blue-d);margin-top:10px}
+/* sonhos */
+.dreams{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.dream{border-radius:14px;overflow:hidden;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column;position:relative}
+.dream .img{aspect-ratio:4/3;background:var(--soft) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:40px;color:#fff}
+.dream input{border:0;border-top:1px solid var(--line);border-radius:0;background:#fff;font-weight:600}
+.dream .x{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#C23B3B;font-weight:800;display:none}
+.dream:hover .x{display:block}
+@media (hover:none){.dream .x{display:block}}
+.dream.add{border:2px dashed var(--line);align-items:center;justify-content:center;min-height:190px;color:var(--ink-2);gap:10px;padding:16px;text-align:center}
+/* carta */
+.envelope{text-align:center;padding:40px 10px}
+.envelope svg{width:140px;height:auto}
+/* month */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:13px;text-align:center}
+.cal .h{font-family:Montserrat;font-weight:800;font-size:10.5px;color:var(--ink-2);letter-spacing:.08em;padding:4px 0}
+.cal a{display:block;padding:8px 0;border-radius:8px;text-decoration:none;color:var(--ink);background:var(--soft);position:relative}
+.cal a:hover{background:#E6EFFC}
+.cal a.wk{color:var(--ink-2)}
+.cal a.hol{background:#FFF1E6;color:#B4561B;font-weight:700}
+.cal a.today{outline:2px solid var(--blue);font-weight:800}
+.cal a .m{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%}
+.hols{font-size:12.5px;color:var(--ink-2);margin-top:10px}
+.hols b{color:#B4561B}
+.week h3{font-family:"Dancing Script";font-weight:700;color:var(--blue);font-size:34px;margin:0 0 2px;text-align:center}
+.week .range{text-align:center;color:var(--ink-2);font-size:12.5px;margin-bottom:18px;font-family:Montserrat;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.day{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px;padding:14px 0;border-top:1px solid var(--line);scroll-margin-top:70px}
+.day:first-of-type{border-top:0}
+.day.is-today{background:linear-gradient(90deg,#EEF5FF,transparent);border-radius:12px;padding-left:10px;padding-right:10px}
+@media (max-width:760px){.day{grid-template-columns:1fr}}
+.day .dt{font-family:Montserrat;font-weight:800;color:var(--blue);font-size:13px;margin-bottom:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.day .dt .tag{font-family:"Open Sans";font-weight:700;font-size:11px;background:#FFF1E6;color:#B4561B;border-radius:999px;padding:1px 8px}
+.day .dt .tg2{background:#E6EFFC;color:var(--blue-d)}
+.day textarea{min-height:52px}
+.mini-l{font-family:Montserrat;font-weight:800;font-size:10.5px;letter-spacing:.1em;color:var(--blue);text-transform:uppercase;margin:2px 0 4px}
+.icons{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.icons button{width:38px;height:38px;border-radius:10px;border:1.5px solid transparent;background:var(--soft);display:flex;align-items:center;justify-content:center;color:#6A7383;padding:0}
+.icons button:hover{border-color:var(--sky)}
+.icons button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.icons svg{width:24px;height:24px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-weight:700;font-size:12.5px;color:var(--ink-2)}
+.tabs button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+/* listas */
+.list{display:grid;gap:6px}
+.li{display:grid;grid-template-columns:28px minmax(0,1fr) auto 30px;gap:8px;align-items:center}
+.li input[type=text]{padding:8px 10px}
+.li.done input[type=text]{text-decoration:line-through;color:var(--ink-2)}
+.ck{width:26px;height:26px;border-radius:50%;border:2px solid var(--sky);background:#fff;display:flex;align-items:center;justify-content:center;color:#fff;padding:0}
+.ck.on{background:var(--blue);border-color:var(--blue)}
+.rate{display:flex}
+.rate button{border:0;background:none;padding:0 1px;font-size:16px;color:#D3D9E2}
+.rate button.on{color:#F2B33D}
+.del{border:0;background:none;color:#B9C0CC;font-size:18px;padding:0}
+.del:hover{color:#C23B3B}
+/* ano */
+.heat{display:grid;grid-template-columns:44px repeat(31,1fr);gap:3px;font-size:10px}
+.heat .ml{font-family:Montserrat;font-weight:800;color:var(--ink-2);display:flex;align-items:center}
+.heat .c{aspect-ratio:1;border-radius:3px;background:#EEF1F5}
+.heat .c.x{background:transparent}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:Montserrat;font-weight:900;font-size:28px;color:var(--blue)}
+.stat span{font-size:12.5px;color:var(--ink-2)}
+.prog{height:8px;border-radius:8px;background:var(--mist);overflow:hidden;margin-top:6px}
+.prog b{display:block;height:100%;background:linear-gradient(90deg,var(--blue-l),var(--blue))}
+.modal{position:fixed;inset:0;background:rgba(10,20,40,.4);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal.on{display:flex}
+.modal .box{background:#fff;border-radius:16px;padding:24px;max-width:440px;width:100%}
+.modal h3{margin:0 0 8px;font-family:Montserrat;color:var(--blue)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:120}
+.toast.on{opacity:1}
+.cover-name{position:relative;font-family:Montserrat;font-weight:900;color:var(--blue);font-size:clamp(26px,4vw,38px);line-height:1;margin-top:20px}
+.cover-yr{position:relative;font-family:Montserrat;font-weight:800;color:#6b6f76;font-size:26px;letter-spacing:.06em;margin-top:6px}
+.cover-t{position:relative;font-family:Montserrat;font-weight:900;color:var(--blue);font-size:clamp(28px,5vw,46px);letter-spacing:.28em;line-height:1.18;text-indent:.28em}
+.cover-s{position:relative;font-family:Sacramento;color:#6b6f76;font-size:clamp(54px,9vw,86px);line-height:.9;margin-top:-4px}
+.toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.toc a{text-decoration:none;background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:14px 16px;color:var(--ink)}
+.toc a:hover{border-color:var(--blue-l);background:#fff}
+.toc a small{display:block;font-family:Montserrat;font-weight:800;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-l)}
+.toc a b{font-family:Montserrat;color:var(--blue-d)}
+.auth{position:fixed;inset:0;z-index:300;background:linear-gradient(160deg,#F7F8FA,#E3E8EF);display:none;align-items:center;justify-content:center;padding:20px;overflow:hidden}
+.auth.on{display:flex}
+.auth .box{position:relative;background:#fff;border-radius:20px;box-shadow:0 10px 40px rgba(20,40,80,.12);padding:32px 28px;max-width:380px;width:100%;text-align:center}
+.auth input{margin-bottom:10px;background-image:none}
+.auth .err{color:#C23B3B;font-size:13px;min-height:18px;margin:4px 0 8px}
+.auth .link{background:none;border:0;color:var(--ink-2);font-size:12.5px;text-decoration:underline;margin-top:12px}
+.acct{font-size:11.5px;color:var(--ink-2);text-align:center;margin:-6px 0 12px;word-break:break-all}
+.acct button{background:none;border:0;color:var(--blue);font-size:11.5px;text-decoration:underline;padding:0 0 0 4px}
+.install{display:none;width:100%;background:#fff;color:var(--blue);border:1.5px solid var(--line);border-radius:10px;padding:8px;font-weight:700;font-size:12.5px;margin:-8px 0 16px}
+.install.on{display:block}
+.loading{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue-l),var(--blue));animation:ld 1.2s infinite;z-index:200}
+@keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+</style>
+</head>
+<body>
+<div class="loading" id="loading"></div>
+<div class="app">
+  <aside id="side">
+    <div class="brand">MEU PLANNER PARA UMA<span class="script">feliz vida</span><span class="yr">2027</span></div>
+    <div class="save" id="save"><i></i><span>Preparando…</span></div>
+    <div class="acct" id="acct"></div>
+    <button class="today-btn" id="todayBtn">Ir para hoje</button>
+    <button class="install" id="installBtn">⬇ Instalar o app neste aparelho</button>
+    <nav id="nav"></nav>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <main>
+    <button class="menu-btn" id="menuBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>MENU · PLANNER 2027</button>
+    <div class="page" id="page"></div>
+  </main>
+</div>
+<div class="auth" id="auth"><svg class="stars" id="authStars" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"></svg><form class="box" id="authForm">
+  <div class="brand" style="font-size:12px">MEU PLANNER PARA UMA<span class="script">feliz vida</span><span class="yr">2027</span></div>
+  <p style="color:var(--ink-2);font-size:13.5px;margin:12px 0 16px" id="authMsg">Entre para sincronizar seu planner em todos os aparelhos.</p>
+  <input type="email" id="authEmail" placeholder="Seu e-mail" autocomplete="email" required>
+  <input type="password" id="authPass" placeholder="Senha (mín. 6 caracteres)" autocomplete="current-password" required minlength="6">
+  <div class="err" id="authErr"></div>
+  <button class="btn" type="submit" style="width:100%;padding:11px" id="authGo">Entrar</button>
+  <button class="link" type="button" id="authToggle">Primeira vez? Criar minha conta</button><br>
+  <button class="link" type="button" id="authLocal">Usar só neste aparelho, sem conta</button>
+</form></div>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileIn" accept="image/*" hidden>
+
+<script>
+(function(){
+"use strict";
+/* ============ utilities ============ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const MES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MES_ID=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DOW=['dom','seg','ter','qua','qui','sex','sáb'];
+const DOWL=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2200)}
+function rng(seed){let s=seed%2147483647;if(s<=0)s+=2147483646;return()=>(s=s*16807%2147483647)/2147483647}
+function starPath(cx,cy,r){let d='';for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r;d+=(i?'L':'M')+(cx+rr*Math.cos(a)).toFixed(1)+' '+(cy+rr*Math.sin(a)).toFixed(1)}return d+'Z'}
+function stars(seed,corners){const r=rng(seed);let s='';const cols=['#1E78C8','#4FA8E0','#9ED3F2','#2C5E9E','#7FC4EC','#B9C7D6'];
+  const spots=corners||[[0,0],[1,1]];
+  spots.forEach(([fx,fy])=>{for(let i=0;i<34;i++){const d=Math.pow(r(),1.6)*42,a=r()*Math.PI/2;
+    const x=fx?100-d*Math.cos(a):d*Math.cos(a),y=fy?100-d*Math.sin(a)*1.1:d*Math.sin(a)*1.1;
+    s+=`<path d="${starPath(x,y,.5+r()*1.7)}" fill="${cols[Math.floor(r()*cols.length)]}" opacity="${(.45+r()*.55).toFixed(2)}"/>`}});
+  return `<svg class="stars" viewBox="0 0 100 100" preserveAspectRatio="none">${s}</svg>`}
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
+const YEAR=2027;
+const HOL=(()=>{const E=easter(YEAR),add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};const k=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const o={};[['01-01','Confraternização Universal'],['04-21','Tiradentes'],['05-01','Dia do Trabalho'],['09-07','Independência do Brasil'],['10-12','N. Sra. Aparecida'],['11-02','Finados'],['11-15','Proclamação da República'],['11-20','Consciência Negra'],['12-25','Natal']].forEach(([d,n])=>o[YEAR+'-'+d]=n);
+  o[k(add(E,-48))]='Carnaval';o[k(add(E,-47))]='Carnaval';o[k(add(E,-46))]='Quarta de Cinzas';o[k(add(E,-2))]='Sexta-feira Santa';o[k(E)]='Páscoa';o[k(add(E,60))]='Corpus Christi';return o})();
+const NOW=new Date();const todayKey=`${NOW.getFullYear()}-${pad(NOW.getMonth()+1)}-${pad(NOW.getDate())}`;
+
+/* ============ icons ============ */
+const W=[
+ ['sol','Ensolarado','<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>'],
+ ['nublado','Nublado','<path d="M7 18.5h10a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.3 3.3 0 0 0 7 18.5z"/>'],
+ ['parcial','Sol entre nuvens','<path d="M9 4.2v1.4M3.8 9.4h1.4M5.3 5.7l1 1M12.7 5.7l-1 1"/><path d="M6.4 11.2a3 3 0 0 1 5.4-2.3"/><path d="M9 19.5h8.5a3.4 3.4 0 0 0 .3-6.8 4.7 4.7 0 0 0-9 1.2A2.8 2.8 0 0 0 9 19.5z"/>'],
+ ['chuva','Chuva','<path d="M7 14.5h10a3.6 3.6 0 0 0 .4-7.2 5 5 0 0 0-9.7 1.3A3 3 0 0 0 7 14.5z"/><path d="M8.5 17.5l-.8 2M12.2 17.5l-.8 2M15.9 17.5l-.8 2"/>'],
+ ['frio','Frio','<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.8 4.6L12 6.4l2.2-1.8M9.8 19.4L12 17.6l2.2 1.8"/>']
+];
+const face=(mouth,eyes)=>`<circle cx="12" cy="12" r="9"/>${eyes||'<circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/>'}${mouth}`;
+const MOOD=[
+ ['radiante','Radiante','#1159C4',face('<path d="M7.5 13.2h9a4.5 4.5 0 0 1-9 0z" fill="currentColor" stroke="none"/>','<path d="M7.6 10.2q1.4-1.6 2.8 0M13.6 10.2q1.4-1.6 2.8 0"/>')],
+ ['feliz','Feliz','#4FA8E0',face('<path d="M8 14q4 3.4 8 0"/>')],
+ ['neutra','Tranquila','#9ED3F2',face('<path d="M8.5 15h7"/>')],
+ ['cansada','Cansada','#B0BEC5',face('<path d="M9 15.5q3-1.2 6 0"/>','<path d="M7.8 10.3h2.6M13.6 10.3h2.6"/>')],
+ ['triste','Triste','#8E7CC3',face('<path d="M8 16.2q4-3.4 8 0"/>')],
+ ['irritada','Irritada','#E57373',face('<path d="M8.5 16q3.5-2.2 7 0"/>','<path d="M7.6 8.6l2.6 1.2M16.4 8.6l-2.6 1.2"/><circle cx="9.2" cy="11" r="1" fill="currentColor"/><circle cx="14.8" cy="11" r="1" fill="currentColor"/>')]
+];
+const svgI=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+
+/* ============ state & storage ============ */
+const S={};             // doc -> {field:value}
+const T={};             // doc -> last local change (ms)
+const LS='planner2027-v1',LST='planner2027-times',LSQ='planner2027-queue',LSM='planner2027-mode';
+const CFG=window.PLANNER_CONFIG||{};
+let sb=null,session=null,mode='local';
+function g(doc,f){return (S[doc]||{})[f]}
+function setv(doc,f,v){(S[doc]=S[doc]||{})[f]=v;T[doc]=Date.now();markDirty(doc)}
+function loadLocal(){try{Object.assign(S,JSON.parse(localStorage.getItem(LS)||'{}'));Object.assign(T,JSON.parse(localStorage.getItem(LST)||'{}'));JSON.parse(localStorage.getItem(LSQ)||'[]').forEach(k=>dirty.add(k))}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){try{const o={};for(const k in S)if(!k.startsWith('img-'))o[k]=S[k];localStorage.setItem(LS,JSON.stringify(o))}catch(e2){}}
+  try{localStorage.setItem(LST,JSON.stringify(T));localStorage.setItem(LSQ,JSON.stringify([...dirty]))}catch(e){}}
+const dirty=new Set();let saveT=null,flushing=false;
+function status(cls,txt){const e=$('#save');e.className='save '+cls;e.querySelector('span').textContent=txt}
+function idleStatus(){if(mode!=='cloud')status('local','Salvo neste aparelho');else if(!navigator.onLine)status('local',dirty.size?'Offline · sincroniza quando voltar a internet':'Offline · tudo salvo no aparelho');else status('ok','Tudo sincronizado')}
+function markDirty(doc){dirty.add(doc);T[doc]=Date.now();status('busy','Salvando…');clearTimeout(saveT);saveT=setTimeout(flush,800)}
+async function flush(){saveLocal();
+  if(mode!=='cloud'||!session||!navigator.onLine||flushing){if(!flushing)idleStatus();return}
+  flushing=true;const keys=[...dirty];dirty.clear();let err=null;
+  try{
+    const ups=keys.filter(k=>S[k]!==null&&S[k]!==undefined).map(k=>({user_id:session.user.id,key:k,data:S[k],updated_at:new Date(T[k]||Date.now()).toISOString()}));
+    const dels=keys.filter(k=>S[k]===null);
+    if(ups.length){const r=await sb.from('planner_docs').upsert(ups,{onConflict:'user_id,key'});if(r.error)throw r.error}
+    for(const k of dels){const r=await sb.from('planner_docs').delete().eq('key',k);if(r.error)throw r.error;delete S[k];delete T[k]}
+  }catch(e){err=e;keys.forEach(k=>dirty.add(k));console.warn('sync',e)}
+  flushing=false;saveLocal();
+  if(dirty.size&&!err){clearTimeout(saveT);saveT=setTimeout(flush,500)}
+  else if(err){status('err','Não sincronizou — tento de novo em instantes');clearTimeout(saveT);saveT=setTimeout(flush,15000)}
+  else idleStatus()}
+async function pull(){if(mode!=='cloud'||!session||!navigator.onLine)return false;
+  const r=await sb.from('planner_docs').select('key,data,updated_at');if(r.error){console.warn(r.error);return false}
+  let changed=false;const remote=new Set();
+  r.data.forEach(row=>{remote.add(row.key);const rt=Date.parse(row.updated_at);
+    if(dirty.has(row.key)&&(T[row.key]||0)>=rt)return;
+    if(!T[row.key]||rt>T[row.key]){S[row.key]=row.data;T[row.key]=rt;changed=true}else if(rt<T[row.key])dirty.add(row.key)});
+  Object.keys(S).forEach(k=>{if(!remote.has(k)&&S[k])dirty.add(k)});
+  saveLocal();if(dirty.size)flush();return changed}
+window.addEventListener('beforeunload',()=>saveLocal());
+window.addEventListener('online',()=>{idleStatus();flush();pull().then(c=>c&&safeRerender())});
+window.addEventListener('offline',()=>idleStatus());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pull().then(c=>c&&safeRerender());else saveLocal()});
+function safeRerender(){const a=document.activeElement;if(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'))return;rerender()}
+
+/* ============ field builders ============ */
+let D='retro'; // current doc
+const ESS=new Set(['r1','r2','r4','r9','r10','r18','r22','r25','r26','r27','r35','r37','r38','r42','r50','r54','roda']);
+const isEss=()=>g('prefs','retroMode')==='essencial';
+function hidden(f){if(D!=='retro'||!isEss())return false;const m=f.match(/^(r\d+|roda|perdao)/);return m?!ESS.has(m[1]):false}
+function modeSwitch(){const e=isEss();return `<div class="sheet" style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><b style="font-family:Montserrat;color:var(--blue)">${e?'Versão essencial':'Versão completa'}</b><div class="hint" style="margin:2px 0 0">${e?'16 perguntas-chave + a Roda do Perdão, para quando o tempo estiver curto. Suas respostas da versão completa continuam guardadas.':'Todas as perguntas da retrospectiva. Sem tempo? Use a versão essencial, com 16 perguntas-chave.'}</div></div><div class="chip"><button data-mode="completa" class="${e?'':'on'}">Completa</button><button data-mode="essencial" class="${e?'on':''}">Essencial</button></div></div>`}
+function ta(f,label,opt={}){if(hidden(f))return '';const v=g(D,f)||'';return `<div class="q">${label?`<label for="${D}-${f}">${label}</label>`:''}${opt.hint?`<div class="hint">${opt.hint}</div>`:''}<textarea id="${D}-${f}" data-f="${f}" rows="${opt.rows||3}" placeholder="${esc(opt.ph||'Escreva aqui…')}">${esc(v)}</textarea></div>`}
+function inp(f,ph,type='text'){return `<input type="${type}" data-f="${f}" value="${esc(g(D,f)||'')}" placeholder="${esc(ph||'')}">`}
+function nlist(f,label,n,opt={}){if(hidden(f))return '';let h=`<div class="q">${label?`<div class="lbl">${label}</div>`:''}<div class="rows">`;
+  for(let i=1;i<=n;i++)h+=`<div class="row"><span class="n">${i}.</span>${inp(f+'_'+i,opt.ph||'')}${opt.date?inp(f+'_'+i+'_d','', 'date'):''}</div>`;return h+'</div></div>'}
+function scale(f,label){if(hidden(f))return '';const v=g(D,f);let h=`<div class="q"><div class="lbl">${label}</div><div class="scale" data-pickgrp="${f}">`;for(let i=0;i<=10;i++)h+=`<button type="button" data-pick="${f}" data-v="${i}" class="${String(v)===String(i)?'on':''}">${i}</button>`;return h+'</div></div>'}
+function yesno(f,label){const v=g(D,f);return `<div class="q"><div class="lbl">${label}</div><div class="chip"><button type="button" data-pick="${f}" data-v="sim" class="${v==='sim'?'on':''}">SIM</button><button type="button" data-pick="${f}" data-v="nao" class="${v==='nao'?'on':''}">NÃO</button></div></div>`}
+const Q=(n,t)=>`<b>${n}.</b> ${t}`;
+function h2(t){return `<h2 class="sec">${t}</h2>`}
+function hero(title,sub,seed,extra=''){return `<div class="hero">${stars(seed||7,[[0,0],[1,1]])}<h1>${title}</h1>${sub?`<div class="sub">${sub}</div>`:''}${extra}</div>`}
+function sheet(h){return `<div class="sheet">${h}</div>`}
+
+/* ============ pages ============ */
+const P=[];
+function page(o){P.push(o);return o}
+
+page({id:'capa',grp:null,title:'Capa',doc:null,render(){
+  const daysTo=Math.ceil((new Date(YEAR,0,1)-NOW)/864e5);
+  const cd=daysTo>0?`Faltam <b>${daysTo}</b> dias para 2027 — tempo perfeito para fazer a retrospectiva de 2026 com calma.`:(NOW.getFullYear()===YEAR?`Hoje é ${DOWL[NOW.getDay()].toLowerCase()}, ${NOW.getDate()} de ${MES[NOW.getMonth()].toLowerCase()}. Bora viver o melhor ano da sua vida!`:'');
+  const toc=P.filter(p=>p.toc).map(p=>`<a href="#${p.id}"><small>${p.toc}</small><b>${p.title}</b></a>`).join('');
+  return `<div class="hero" style="min-height:520px">${stars(3,[[0,0],[1,1],[1,0]])}
+    <div class="cover-t">MEU<br>PLANNER<br>PARA<br>UMA</div><div class="cover-s">feliz vida</div>
+    <div class="cover-name">MICHELE<br>GANDOLFI</div><div class="cover-yr">2027</div></div>
+  ${sheet(`<div class="intro"><p class="center" style="font-size:16px">${cd}</p>
+   <p>Este planner é seu, do jeitinho que você já usava — agora digital. Tudo o que você escreve, marca e escolhe fica salvo automaticamente — no aparelho e, quando você entra com sua conta, sincronizado entre celular, tablet e computador. Funciona até sem internet.</p>
+   <p>O caminho é o mesmo de sempre: primeiro <b>olhar para 2026</b> (recapitular, reconhecer, agradecer e perdoar, ressignificar), depois <b>sonhar e projetar 2027</b> e, por fim, <b>planejar e executar</b> mês a mês, semana a semana.</p></div>
+   ${h2('Sumário')}<div class="toc">${toc}</div>`)}`}});
+
+/* ---- Parte 1: 2026 ---- */
+page({id:'recapitular',grp:'Olhando para 2026',toc:'Capítulo 1',title:'Recapitular e Recordar',doc:'retro',render(){return hero('Recapitular e<br>Recordar','',11)+sheet(`<div class="intro"><p>O primeiro passo é repassar todo o ano de 2026 em todos os aspectos da sua vida. Se tiver uma agenda, pode repassar mês a mês, semana a semana. O que não estiver na agenda, certamente estará na sua memória.</p><p>Refletir sobre esses momentos é importante para que eles não se percam. Além disso, revisar o ano é o primeiro passo para verificar tudo aquilo de bom e positivo que você fez e quais são os pontos de melhoria e aperfeiçoamento, que talvez possam vir a ser metas ou objetivos no ano seguinte.</p></div>`)+sheet(
+ h2('Recapitulando a vida pessoal')+
+ (hidden('r1')?'':`<div class="q"><div class="lbl">${Q(1,'Quais os três eventos importantes que te marcaram em 2026? Como foram estas ocasiões? O que elas fizeram você sentir? Por que foram marcantes?')}</div>${[1,2,3].map(i=>ta('r1_'+i,'',{rows:2,ph:i+')'})).join('')}</div>`)+
+ ta('r2',Q(2,'Quais projetos pessoais você concretizou este ano?'))+
+ ta('r3',Q(3,'Quais projetos pessoais você não concretizou e o que faltou para que fossem concretizados?'))+
+ ta('r4',Q(4,'O que você realizou nesse último ano que mais te deixou orgulhosa de si mesma?'))+
+ ta('r5',Q(5,'O que poderia ter sido feito de um jeito melhor?'))+
+ ta('r6',Q(6,'Quais foram os cursos e formações que realizou?'))+
+ ta('r7',Q(7,'Realizou grandes projetos em seu trabalho? Quais?'))+
+ ta('r8',Q(8,'Foi promovida ou começou em um novo trabalho? Como foi que isso aconteceu? Como se sentiu?'))+
+ ta('r9',Q(9,'Quais desafios superou? E os obstáculos que ainda precisa vencer?'))+
+ h2('Recapitulando os relacionamentos')+
+ scale('r10',Q(10,'De 0 a 10, como você avalia seus relacionamentos no ano de 2026?'))+ta('r10t','',{ph:'Explique o motivo da sua nota…',rows:2})+
+ ta('r11',Q(11,'Em casa, com seus pais, irmãos, filhos, cônjuge, quais foram os momentos mais especiais?'))+
+ ta('r12',Q(12,'Quais relações você acredita que poderiam ter sido melhores? De que maneira?'))+
+ ta('r13',Q(13,'Com quais pessoas você gostaria de ter tido mais contato e por que não se aproximou?'))+
+ ta('r14',Q(14,'Há alguém com quem tenha algo que ficou mal resolvido em 2026? Como se sente em relação a isso?'))+
+ h2('Recapitulando a saúde')+
+ ta('r15',Q(15,'Considerando que saúde envolve aspectos físicos, mentais e espirituais, como você cuidou da sua saúde no último ano?'))+
+ ta('r16',Q(16,'Quais foram as maiores dificuldades que você enfrentou?'))+
+ ta('r17',Q(17,'Quais hábitos saudáveis você começou e quais abandonou?'))+
+ scale('r18',Q(18,'De 0 a 10, o quanto você considera que o ano de 2026 foi saudável?'))+
+ h2('Recapitulando o estado espiritual e energético')+
+ ta('r19',Q(19,'Qual sua relação com a espiritualidade em 2026? (não significa, necessariamente, religião)'))+
+ ta('r20',Q(20,'Você sente que teve mais momentos com energias positivas ou negativas?'))+
+ ta('r21',Q(21,'Quais momentos mais afetaram sua fé, energia ou senso de significado?'))+
+ scale('r22',Q(22,'De 0 a 10, o quanto você se sente conectada com uma força maior no universo?')))}});
+
+page({id:'reconhecer',grp:'Olhando para 2026',toc:'Capítulo 2',title:'Reconhecer e Ressignificar',doc:'retro',render(){return hero('Reconhecer e<br>Ressignificar','',23)+sheet(`<div class="intro"><p>Você deve ter percebido que costuma ter muito mais facilidade para lembrar dos momentos negativos do que dos positivos — isso é normal. Mas te impede de enxergar ou contabilizar todas as coisas boas que acontecem na sua vida.</p><p>Busque sempre focar nos momentos que compartilhou com alguém especial e no modo como isso te fez sentir. Pense naquelas realizações incríveis deste ano, quando você pensou que não conseguiria, mas percebeu sua força.</p><p>Ao focar no positivo você desenvolve a sua força de vontade, consegue pensar mais claramente e tem mais criatividade para resolver os conflitos na sua vida. É verdade que não houve apenas momentos positivos em 2026, mas foram os momentos de dificuldades e bloqueios que possibilitaram o seu crescimento.</p><p>A vida é feita de momentos, da forma como você os encara e das lições que aprende… E por que não se dar mais uma chance agora, nesse novo ano que se aproxima? Convido você a refletir, reconhecer e ressignificar os melhores momentos e também suas maiores dificuldades e bloqueios de 2026.</p></div>`)+sheet(
+ h2('Estado interno')+
+ ta('r23',Q(23,'Em qual Estado Interno você viveu este ano que passou? Estado de Graça, tranquilidade, com um colorido a mais — ou estado de sofrimento, dores, mágoas e falta de equilíbrio?'))+
+ ta('r24',Q(24,'Estamos no fim de 2026 e você está recordando o ano que passou e planejando 2027… Em qual Estado Interno está fazendo isso agora?'))+
+ ta('r25',Q(25,'Que momentos te fizeram rir muito e realmente te alegraram no último ano? Por que eles significaram tanto para você?'))+
+ h2('Decisões e aprendizados')+
+ ta('r26',Q(26,'Qual a melhor decisão que tomou em 2026? Por que ela foi a melhor? O que essa decisão te fez sentir? Mudou algo em sua vida? O quê?'))+
+ ta('r27',Q(27,'Qual foi o aprendizado mais marcante, que te fez olhar para certas pessoas e situações de uma forma mais positiva, menos julgadora, com compreensão e empatia?'))+
+ ta('r28',Q(28,'Qual foi aquele medo terrível e paralisante que em 2026 você conseguiu encarar de frente por se enxergar e se sentir verdadeiramente mais forte e feliz?'))+
+ h2('Acontecimentos marcantes')+
+ ta('r29',Q(29,'Neste ano ocorreu alguma surpresa incrível, algo ou alguém que chegou em sua vida sem que você esperasse, mas transformou as coisas para melhor? Quem? O que aconteceu?'))+
+ ta('r30',Q(30,'Aconteceu algo que te pegou despreparada e que foi negativo para sua vida? Como você lidou com isso? Foi a decisão mais correta?'))+
+ ta('r31',Q(31,'Que desejo você finalmente realizou? Fale sobre ele…'))+
+ h2('Autorrealização e autoconhecimento')+
+ ta('r32',Q(32,'Quais crenças limitantes foram abandonadas?'))+
+ ta('r33',Q(33,'Qual o conhecimento, a verdade interna que descobriu sobre si mesma?'))+
+ ta('r34',Q(34,'E o que você não realizou este ano?'))+
+ ta('r35',Q(35,'Quais das suas metas foram abandonadas? Por que isso aconteceu?'))+
+ ta('r36',Q(36,'Que obstáculos você ainda não conseguiu ultrapassar e que lição tirou disso?'))+
+ ta('r37',Q(37,'O que poderia fazer de melhor para que, em 2027, você consiga alcançar o que deixou de realizar em 2026?')))}});
+
+const RODA=[
+ ['Permita-se perdoar','Que nota você atribui à liberdade que tem se dado para permitir que o perdão aconteça e não sofrer mais?','#E53935'],
+ ['Aceite e perdoe a si mesma','Que nota você atribui à sua capacidade de se aceitar e se perdoar, apesar dos próprios erros?','#43A047'],
+ ['Escute seu diálogo interno e foque no perdão','Que nota você atribui à sua disposição para refletir sobre seus sentimentos negativos em relação a diferentes pontos de vista, a fim de transformá-los em perdão?','#1E88E5'],
+ ['Entenda o objetivo do perdão','Que nota você atribui à sua compreensão de que o perdão é uma atitude para livrar a si mesma de sentimentos e emoções negativas?','#D81B60'],
+ ['Viva o aqui e o agora','Que nota você atribui à sua capacidade de se desligar do passado em busca de viver o tempo presente?','#00897B'],
+ ['Permita-se ressignificar','Que nota você atribui à sua capacidade de dar novo significado às situações (entendendo que ressignificar não significa esquecer)?','#5E35B1'],
+ ['Busque aprendizado','Que nota você atribui à sua capacidade de aprender com as situações adversas?','#FB8C00']
+];
+function rodaSVG(){const cx=160,cy=160,R=140,n=7;let s='';
+  for(let i=0;i<n;i++){const a0=-Math.PI/2+i*2*Math.PI/n,a1=a0+2*Math.PI/n,v=+(g('retro','roda'+(i+1))||0);
+    const arc=(r)=>{const x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);return `M${cx} ${cy}L${x0.toFixed(1)} ${y0.toFixed(1)}A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}Z`};
+    s+=`<path d="${arc(R)}" fill="${RODA[i][2]}" opacity=".08" stroke="#fff" stroke-width="2"/>`;
+    if(v>0)s+=`<path d="${arc(R*v/10)}" fill="${RODA[i][2]}" opacity=".85" stroke="#fff" stroke-width="2"/>`;
+    const am=(a0+a1)/2;s+=`<text x="${(cx+(R+12)*Math.cos(am)).toFixed(1)}" y="${(cy+(R+12)*Math.sin(am)+4).toFixed(1)}" text-anchor="middle" font-family="Montserrat" font-weight="800" font-size="12" fill="${RODA[i][2]}">${i+1}º</text>`}
+  for(let k=2;k<=10;k+=2)s+=`<circle cx="${cx}" cy="${cy}" r="${R*k/10}" fill="none" stroke="#C9D2DE" stroke-width="${k===10?1.4:.6}" stroke-dasharray="${k===10?'':'2 3'}"/>`;
+  const vals=RODA.map((_,i)=>+(g('retro','roda'+(i+1))||0)),cnt=vals.filter(v=>v>0).length,avg=cnt?(vals.reduce((a,b)=>a+b,0)/n).toFixed(1):'–';
+  s+=`<circle cx="${cx}" cy="${cy}" r="26" fill="#fff"/><text x="${cx}" y="${cy+2}" text-anchor="middle" font-family="Montserrat" font-weight="900" font-size="17" fill="#1159C4">${avg}</text><text x="${cx}" y="${cy+15}" text-anchor="middle" font-size="8.5" fill="#5B6472">média</text>`;
+  return `<svg viewBox="-14 -14 348 348" width="100%" id="rodaSvg">${s}</svg>`}
+page({id:'agradecer',grp:'Olhando para 2026',toc:'Capítulo 3',title:'Agradecer e Perdoar',doc:'retro',render(){return hero('Agradecer e<br>Perdoar','',37)+sheet(`<div class="intro"><p>Mais do que olhar para os momentos que fizeram parte do seu ano, é preciso agradecer por cada um deles. O simples fato de estar viva e respirando é um dos grandes motivos pelos quais todos precisam ser gratos. Ainda que muitas coisas tenham dado errado, você tem a cada dia uma nova oportunidade de mudar, de transformar a sua realidade.</p><p>É preciso agradecer até mesmo pelos infortúnios, pois são eles os maiores responsáveis pelos grandes e valiosos aprendizados que você teve em sua vida. Ao olhar para as coisas com o sentimento de gratidão, sua vida será mais leve e mais bonita.</p><p>Um dos aspectos mais importantes para verdadeiramente conseguir ser grata, inclusive pelos dias ruins, é o perdão. Quando você perdoa, se desconecta da culpa, da mágoa, do ressentimento e da dor — é como se jogasse fora o seu “lixo emocional”.</p><p>Convido você a cultivar o olhar de gratidão para as pequenas coisas que te alegram, para as pessoas que fazem os seus dias um pouquinho melhores. E te convido a refletir sobre o que você tem carregado sem necessidade na sua bagagem emocional.</p></div>`)+sheet(
+ h2('Gratidão')+
+ nlist('r38',Q(38,'Quais são os 5 motivos pelos quais você precisa agradecer no ano de 2026?'),5)+
+ ta('r39',Q(39,'Se houver mais de 5 motivos, continue agradecendo…'))+
+ ta('r40',Q(40,'Quais foram as pessoas que ajudaram a realizar seu planejamento de 2026? O que elas te ajudaram a conquistar?'))+
+ ta('r41',Q(41,'De todas as pessoas que você citou anteriormente, qual foi a mais importante de todas? Por que essa pessoa foi tão especial?'))+
+ h2('Carta de agradecimento')+
+ ta('r42',Q(42,'Se você pudesse escrever agora uma carta de agradecimento a uma pessoa específica (incluindo pessoas que partiram), o que você escreveria?'),{rows:9,ph:'Querida(o)…'})+
+ ta('r43',Q(43,'Se ainda puder fazer contato com esta pessoa, ligue ou mande uma mensagem de voz lendo sua carta de gratidão. Como você se sentiu após realizar essa ação? Se levar a carta em mãos, escreva aqui depois como foi o encontro.'))+
+ ta('r44',Q(44,'Se sua gratidão for por uma pessoa que não está mais entre nós, escreva e leia a carta em voz alta, em um horário e local em que se sinta confortável. Mentalize esta pessoa te ouvindo. Como foi?'))+
+ h2('Aprendizados')+
+ ta('r45',Q(45,'Durante 2026, houve algum momento em que foi surpreendida positivamente pelo Universo com alguma notícia extraordinária ou um acontecimento inesperado?'))+
+ ta('r45_1',Q('45.1','Como você se sentiu a respeito disso?'),{rows:2})+
+ ta('r45_2',Q('45.2','Como você agradeceu?'),{rows:2})+
+ ta('r46',Q(46,'Quais foram os momentos de dificuldade com os quais você aprendeu algo de positivo?'))+
+ ta('r46_1',Q('46.1','Qual foi a lição aprendida e pela qual pode agradecer?'),{rows:2})+
+ ta('r47',Q(47,'O que você aprendeu com desafios e situações de dor enfrentadas em 2026? O que aconteceu?'))+
+ ta('r48',Q(48,'Qual foi o maior aprendizado que você teve nos relacionamentos pessoais em 2026? Comente.'))+
+ ta('r49',Q(49,'Qual o maior aprendizado no campo profissional? Comente o que aconteceu.')))+
+ sheet(h2('Praticando o perdão')+`<div class="intro"><p>O perdão é o melhor caminho para seguir em frente na direção das suas metas e objetivos, pois potencializa o seu crescimento pessoal e espiritual. Liberte-se agora! Repita para si mesma todos os dias, como um mantra:</p></div>
+ <div class="mantra">“Eu me liberto agora da dor, do remorso e da angústia.<br>Isso não faz parte de quem eu sou. Eu sou livre!<br>Eu me liberto de toda dor e de toda mágoa!<br>Eu controlo a minha vida!”</div>
+ <div class="intro"><p>Não se prenda ao passado: um novo ciclo começa em 2027, trazendo novas oportunidades de ser cada vez melhor e de fazer acontecer tudo aquilo que deseja.${hidden('perdao')?'':' Você sabia que existem 3 tipos de perdão?'}</p></div>
+ ${hidden('perdao')?'':`<div class="grid3">${[1,2,3].map(i=>`<div class="card"><h4>${i}º tipo de perdão</h4>${ta('perdao'+i,'',{rows:3,ph:['Ex.: perdoar a si mesma','Ex.: perdoar o outro','Ex.: pedir perdão'][i-1]})}</div>`).join('')}</div>`}
+ <div class="intro" style="margin-top:8px"><p>Se você deseja ter uma vida mais leve, precisa começar a deixar as suas dores e mágoas irem embora. A <b>Roda – 7 Passos do Perdão</b> vai te ajudar a refletir sobre como você lida com o perdão e o que precisa da sua atenção no próximo ano. Arraste cada passo de 0 a 10:</p></div>
+ <div class="roda"><div>${RODA.map((r,i)=>{const v=g('retro','roda'+(i+1))||0;return `<div class="step"><div class="t">${i+1}º passo · ${r[0]}<span id="rv${i+1}">${v}</span></div><div class="d">${r[1]}</div><input type="range" min="0" max="10" step="1" value="${v}" data-f="roda${i+1}" data-roda="${i+1}" style="accent-color:${r[2]}"></div>`}).join('')}</div><div id="rodaBox">${rodaSVG()}</div></div>
+ ${ta('rodaReflexao','O que a sua roda mostra? Qual passo precisa de mais atenção em 2027?',{rows:3})}`)}});
+
+page({id:'ressignificar',grp:'Olhando para 2026',toc:'Capítulo 4',title:'Ressignificar e Transcender',doc:'retro',render(){return hero('Ressignificar e<br>Transcender','',51)+sheet(`<div class="intro"><p><b>Sobre o ano de 2026…</b> Mesmo que para você esse ano tenha representado um ano de dificuldades e desafios, após responder a todas essas questões, tenho certeza de que você percebeu o quanto evoluiu e se transformou.</p><p>Agora é a hora de ressignificar e transcender, traduzindo todos os seus sentimentos sobre 2026 para o papel.</p></div>`)+sheet(
+ nlist('r50',Q(50,'Escolha agora 3 palavras que representam o ano de 2026 para você.'),3)+
+ ta('r51',Q(51,'Que critério usou para escolher essas 3 palavras? Por que as escolheu?'))+
+ nlist('r52',Q(52,'Quais foram os três últimos livros, músicas ou filmes que te fizeram refletir e trouxeram insights poderosos para o ano que se inicia?'),3)+
+ ta('r53',Q(53,'Considerando os desafios e aprendizados sobre si mesma em 2026, o quanto você acredita que se dedicou ao seu autoconhecimento?'))+
+ ta('r54',Q(54,'Pensando no que significou 2026, o que você acha que falta para que 2027 seja O MELHOR ANO DA SUA VIDA?'),{rows:4}))}});
+
+/* ---- Parte 2: 2027 Sonhar ---- */
+page({id:'sonhar',grp:'2027 · Sonhar e Projetar',toc:'Capítulo 5',title:'Sonhar e Projetar',doc:'sonhar',render(){return hero('2027<br><br>Sonhar e<br>Projetar','',61)+sheet(`<div class="intro"><p class="center">São os sonhos que movem a sua vida.</p><p>Por isso, você precisa alimentar a sua criança sonhadora com doses diárias de estímulos e vontade de viver; só assim vai conseguir manter essa chama, tão necessária, acesa dentro de si mesma.</p><p class="center">SONHE, SONHE MUITO, SONHE GRANDE!</p><p>O melhor ano da sua vida está por vir! Ele está bem na sua frente, te oferecendo diversas possibilidades incríveis. Deseje, sonhe e realize. O momento de transformação é agora. Que tal fazermos, neste momento, um exercício de imaginação e criatividade para receber o ano que se inicia?</p></div>`)+sheet(
+ h2('Meus objetivos para 2027')+
+ nlist('s1',Q(1,'Quais são seus 3 maiores objetivos para 2027? E qual o prazo para realizá-los?'),3,{date:true,ph:'Objetivo'})+
+ focusPick()+
+ ta('s2',Q(2,'O que tenho que posso utilizar para iniciar, hoje, o atingimento desse objetivo?'),{hint:'Pense em recursos, habilidades, conhecimentos, estrutura.'})+
+ ta('s3',Q(3,'O que ainda não tenho hoje e que terei de desenvolver, conseguir ou conquistar para atingir esse objetivo?'))+
+ ta('s4',Q(4,'Com quem, onde, quando e o que farei para conseguir tal coisa?'))+
+ ta('s5',Q(5,'O que já realizei no passado que pode me ajudar agora a atingir esse objetivo?'))+
+ ta('s6',Q(6,'Você já realizou algo semelhante? Como, e o que posso aprender com essas experiências?'))+
+ h2('Níveis neurológicos')+`<div class="intro"><p class="hint" style="margin:0 0 14px">Para cada nível, responda as duas faces: o que já contribui para o seu objetivo foco e o que pode ser alterado para contribuir ainda mais.</p></div>`+
+ `<div class="grid2">${[
+  ['s7','s8','Ambiente','O que no meu ambiente (lugares, pessoas, rotina, estrutura) contribui — e o que pode ser alterado?'],
+  ['s9b','s9','Comportamento','O que no meu comportamento já ajuda — e o que pode ser alterado?'],
+  ['s10','s11','Capacidades e habilidades','O que nas minhas capacidades e habilidades contribui — e o que preciso desenvolver?'],
+  ['s12','s13','Crenças e valores','O que nas minhas crenças e valores contribui — e o que pode ser revisto?'],
+  ['s14','s14b','Identidade','O que na minha identidade, missão de vida e senso do Eu contribui — e o que pode mudar?'],
+  ['s15','s16','Visão sistêmica','O que no meu senso de pertencimento e afiliação (família, trabalho, comunidade) contribui — e o que pode ser alterado?'],
+  ['s17','s18','Propósito e espiritualidade','O que no meu propósito de vida, visão maior e espiritualidade contribui — e o que pode ser alterado?']
+ ].map(([f,alt,n,t],i)=>`<div class="card" ${i===6?'style="grid-column:1/-1"':''}><h4>${7+i}. ${n}</h4>${ta(f,'',{rows:3,ph:t})}${g('sonhar',alt)?ta(alt,'<span class="hint">Sua resposta anterior (o que alterar):</span>',{rows:2}):''}</div>`).join('')}</div>`+
+ h2('Compromisso')+
+ ta('s19',Q(14,'Ao analisar os níveis neurológicos de percepção, aprendizagem e mudança, e todo o processo evolutivo, o que estou disposta a fazer para atingir esse objetivo?'))+
+ ta('s20',Q(15,'De quais aspectos abrirei mão? De quais aspectos não abrirei mão? O que não estou disposta a fazer para atingir esse objetivo?'))+
+ ta('s21',Q(16,'Como posso desfrutar do processo até atingir o objetivo?'))+
+ ta('s22',Q(17,'Como saberei se estou conseguindo atingir esse objetivo? Como saberei se já atingi o objetivo?'))+
+ `<div class="banner">Este ano será o ano de<br>todas as minhas realizações!!!</div>`)}});
+function goals(){return [1,2,3].map(i=>({i,t:g('sonhar','s1_'+i),d:g('sonhar','s1_'+i+'_d'),foco:String(g('sonhar','s1foco'))===String(i)})).filter(x=>x.t)}
+function goalsBlock(m){const gs=goals();
+ if(!gs.length)return `<div class="card" style="margin-bottom:24px"><h4>Meus objetivos de 2027 neste mês</h4>Você ainda não definiu seus 3 grandes objetivos. <a href="#sonhar">Defina em Sonhar e Projetar</a> e eles aparecem aqui em todos os meses.</div>`;
+ return `<div class="card" style="margin-bottom:26px;background:linear-gradient(135deg,#EEF5FF,#F8FBFF)"><h4>Meus objetivos de 2027 em ${MES[m].toLowerCase()}</h4><div class="hint" style="margin-bottom:12px">O que você vai fazer este mês para chegar mais perto de cada grande objetivo?</div>${gs.map(x=>`<div class="q" style="margin-bottom:14px"><div class="lbl">${x.foco?'★ ':''}${esc(x.t)}${x.d?` <span class="hint" style="font-weight:400">· prazo ${x.d.split('-').reverse().join('/')}</span>`:''}</div><textarea data-f="ob_${x.i}" rows="2" placeholder="Este mês eu vou…">${esc(g(D,'ob_'+x.i)||'')}</textarea></div>`).join('')}</div>`}
+function focusPick(){const v=g('sonhar','s1foco');let h=`<div class="q"><div class="lbl"><b>1.1.</b> Escolha em qual dos três objetivos você decide focar mais ainda:</div><div class="chip" style="flex-wrap:wrap">`;
+  for(let i=1;i<=3;i++){const t=g('sonhar','s1_'+i)||('Objetivo '+i);h+=`<button type="button" data-pick="s1foco" data-v="${i}" class="${v==i?'on':''}">★ ${esc(t.length>40?t.slice(0,40)+'…':t)}</button>`}
+  return h+'</div><div class="hint" style="margin-top:8px">As perguntas 2 a 17 abaixo se referem a este objetivo foco.</div></div>'}
+
+page({id:'projecoes',grp:'2027 · Sonhar e Projetar',toc:'Capítulo 5',title:'Projeções para 2027',doc:'sonhar',render(){return sheet(
+ h2('Projeções pessoais')+nlist('afp',' Afirmações positivas para 2027',3,{ph:'Eu sou… / Eu tenho… / Eu conquisto…'})+
+ ta('s23',Q(23,'Qual o sonho de criança que você ainda não realizou, mas gostaria de realizar?'))+
+ ta('s24',Q(24,'Qual o primeiro passo para realizar esse sonho neste ano?'))+
+ ta('s25',Q(25,'Quais qualidades e aspectos da sua personalidade você gostaria de reforçar em 2027?'))+
+ ta('s26',Q(26,'O que você gostaria de mudar na sua vida pessoal?'))+
+ ta('s27',Q(27,'O que você pode fazer para receber 2027 de braços abertos? Que hábitos se compromete a adotar com comprometimento?'))+
+ h2('Projeções profissionais')+nlist('afpr','Afirmações positivas para 2027',3,{ph:'Afirmação profissional'})+
+ ta('s28',Q(28,'Em relação ao trabalho, qual a grande conquista, promoção ou proposta que você não recebeu em 2026, mas espera conquistar em 2027?'))+
+ ta('s29',Q(29,'Quais competências e habilidades você precisa adquirir para conseguir?'))+
+ ta('s30',Q(30,'Você sente que deixa fluir suas ideias? Sabe sonhar e ousar para realizar?'))+
+ nlist('s31',Q(31,'Quais são seus 3 maiores objetivos profissionais para 2027? E qual o prazo para realizá-los?'),3,{date:true,ph:'Objetivo profissional'})+
+ h2('Projeções para os relacionamentos')+
+ ta('s32',Q(32,'De que maneira você poderia estar mais presente na vida dos seus filhos e da sua família?'))+
+ ta('s33',Q(33,'Há alguém na sua família que está afastado ou excluído do convívio familiar? Se sim, como pode incluir esta pessoa novamente?'))+
+ ta('s34',Q(34,'Quais os problemas que você identifica na família e que se compromete a tentar resolver em 2027?'))+
+ ta('s35',Q(35,'No dia 24 de dezembro de 2027, onde você pretende estar? Com quem você planeja estar?'))+
+ ta('s36',Q(36,'Sobre sua noite de ano novo, como você acredita que será? Pretende viajar? Para onde? Com quem?'))+
+ h2('Projeções financeiras')+
+ scale('s37',Q(37,'De 0 a 10, como você avalia sua situação financeira em 2026?'))+ta('s37t','',{rows:2,ph:'Justifique sua nota…'})+
+ ta('s38',Q(38,'O que você pode fazer para melhorar sua situação financeira em 2027?'))+
+ nlist('s39',Q(39,'Quais são seus 3 maiores objetivos financeiros para 2027?'),3)+
+ h2('Projeções espirituais')+
+ ta('s40',Q(40,'Você tem algum hábito, crença ou prática que realiza todos os anos na esperança de um ano melhor?'),{rows:2})+
+ ta('s40_1',Q('40.1','Que prática é essa e por que você faz questão de repetir?'),{rows:2})+
+ ta('s41',Q(41,'Como você pretende se aproximar da espiritualidade (independentemente de qual religião pratica)?')))}});
+
+page({id:'financeiro',grp:'2027 · Sonhar e Projetar',toc:'Capítulo 5',title:'Planejamento Financeiro',doc:'sonhar',render(){
+ const rowsFor=(k,n)=>{let h='';for(let i=1;i<=n;i++)h+=`<tr>${i===1?`<td class="p" rowspan="${n}">${k[1]}<small>${k[2]}</small></td>`:''}<td>${inp(`fin_${k[0]}_${i}_o`,'Objetivo')}</td><td style="width:150px">${inp(`fin_${k[0]}_${i}_d`,'','date')}</td><td style="width:140px">${inp(`fin_${k[0]}_${i}_v`,'R$ 0,00')}</td></tr>`;return h};
+ return sheet(h2('Planejamento financeiro')+`<div class="intro"><p class="center">Decida o que fazer, quanto vai custar, como vai fazer… antes de fazer!</p><p>Seja o mais específica possível, mas realista com base na sua situação financeira atual. E lembre-se: o planejamento é apenas o primeiro passo. Seu compromisso é com a manutenção e a consistência, para que seu planejamento se transforme em liberdade financeira.</p></div>
+ <div class="grid3" style="margin:18px 0 26px">
+  <div class="card"><h4>Prazo curto · até 2 anos</h4>Pagar dívidas, empréstimos, cartão de crédito, quitar carro…</div>
+  <div class="card"><h4>Prazo médio · 2 a 5 anos</h4>Faculdade (própria ou dos filhos), viagens, trocar o carro, reserva de emergência</div>
+  <div class="card"><h4>Prazo longo · mais de 5 anos</h4>Pagamento de imóvel, poupança e/ou investimento para aposentadoria</div></div>
+ <div style="overflow-x:auto"><table class="fin"><thead><tr><th>Prazo</th><th>Objetivos</th><th>Data</th><th>Valor</th></tr></thead><tbody>
+ ${rowsFor(['c','Curto prazo','Até 2 anos'],4)}${rowsFor(['m','Médio prazo','2 a 5 anos'],4)}${rowsFor(['l','Longo prazo','Mais de 5 anos'],4)}
+ </tbody></table></div><div class="tot" id="finTot">${finTotal()}</div>`)}});
+function parseBRL(s){if(!s)return 0;s=String(s).replace(/[^\d,.-]/g,'');if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.')}const n=parseFloat(s);return isNaN(n)?0:n}
+function finTotal(){let t=0;['c','m','l'].forEach(k=>{for(let i=1;i<=4;i++)t+=parseBRL(g('sonhar',`fin_${k}_${i}_v`))});return 'Total planejado: '+t.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+
+page({id:'sonhos',grp:'2027 · Sonhar e Projetar',toc:'Capítulo 5',title:'Quadro dos Sonhos',doc:'sonhos',render(){
+ const items=(g('sonhos','items')||[]);const bgs=['#1159C4','#4FA8E0','#2C5E9E','#7FC4EC','#8E7CC3','#43A047'];
+ return sheet(h2('Quadro dos sonhos')+`<div class="intro"><p>Monte aqui o seu painel de visão para 2027: imagens e palavras que representam o que você quer viver. Toque em <b>+ adicionar</b> para colocar uma foto do seu dispositivo, e escreva embaixo o que ela significa.</p></div>
+ <div class="dreams">${items.map((it,i)=>{const img=g('img-'+it.id,'src');return `<div class="dream"><div class="img" style="${img?`background-image:url('${img}')`:`background:${bgs[i%bgs.length]}`}">${img?'':'✦'}</div><input type="text" data-dream="${it.id}" value="${esc(it.t||'')}" placeholder="O que esse sonho significa?"><button class="x" data-deldream="${it.id}" title="Remover">×</button></div>`}).join('')}
+ <button class="dream add" id="addDream"><span style="font-size:30px;color:var(--blue)">+</span><b style="color:var(--blue)">adicionar sonho</b><span style="font-size:12px">com foto (opcional)</span></button></div>`)}});
+
+/* ---- Parte 3: executar ---- */
+page({id:'carta',grp:'2027 · Planejar e Executar',toc:'Capítulo 6',title:'Carta ao Futuro',doc:'carta',render(){
+ const sealed=g('carta','sealed')&&NOW<new Date(YEAR,11,1)&&!g('carta','peek');
+ return hero('Planejar e<br>Executar','',71,`<div class="sub">O que diferencia o sonhador que nunca vai alcançar nada do sonhador que está sempre vivendo e realizando seus desejos é a capacidade de planejar, construir e realizar. Se você deseja fazer de 2027 o melhor ano da sua vida, é preciso planejamento e ação.</div><div class="script" style="font-size:clamp(30px,4.6vw,44px)">Você é a autora da sua própria história.</div>`)+
+ sheet(h2('Carta ao futuro')+`<div class="intro"><p>Escreva agora uma Carta ao Futuro. Imagine-se recebendo essa carta em <b>dezembro de 2027</b>. Parabenize-se por suas conquistas e pelo alcance de tudo o que planejou. Pelo que você pode se parabenizar? O que você conquistou?</p><p class="hint">Para te ajudar: ao refletir sobre aquilo que você mais deseja, é como se estivesse projetando uma imagem mental. Quer comprar um carro? Visualize-se indo até a concessionária, escolhendo o modelo, sentando no banco do motorista, sentindo o cheirinho de novo… e dirigindo na estrada, muito feliz por essa conquista. Isso é projeção.</p></div>`+
+ (sealed?`<div class="envelope">${svgI('<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M3 6l9 7 9-7"/>').replace('<svg','<svg style="color:#1159C4"')}<h3 style="font-family:Montserrat;color:var(--blue)">Carta lacrada até 1º de dezembro de 2027</h3><p style="color:var(--ink-2)">Ela está guardada em segurança. Faltam ${Math.ceil((new Date(YEAR,11,1)-NOW)/864e5)} dias para você abri-la.</p><button class="btn ghost" data-act="peek">Abrir antes da hora</button></div>`:
+ ta('texto','',{rows:16,ph:'Querida Michele de dezembro de 2027,\n\nParabéns! Você…'})+`<div style="display:flex;gap:10px;flex-wrap:wrap">${g('carta','sealed')?`<button class="btn ghost" data-act="unseal">Remover lacre</button>`:`<button class="btn" data-act="seal">✉ Lacrar carta até dezembro de 2027</button>`}</div>`))}});
+
+const MONTHS=[
+ ['Eu crio!','Viver não é necessário. Necessário é criar.','Fernando Pessoa'],
+ ['Eu planejo!','Um objetivo sem um plano é apenas um desejo.','Antoine de Saint-Exupéry'],
+ ['Eu realizo!','Tudo o que um sonho precisa para ser realizado é alguém que acredite que ele possa ser realizado.','Roberto Shinyashiki'],
+ ['Eu avalio!','A rigidez endurece o senso de avaliação humana sobre a vida.','Alessandro Lo-Bianco'],
+ ['Eu organizo!','Com organização e tempo, acha-se o segredo de fazer tudo e bem feito.','Pitágoras'],
+ ['Eu escolho!','O presente não é um passado em potência, ele é o momento da escolha e da ação.','Simone de Beauvoir'],
+ ['Eu foco!','Os raios do sol não queimam até serem colocados em foco.','Alexander Graham Bell'],
+ ['Eu desenvolvo!','A simplicidade tende ao desenvolvimento, a complexidade à desintegração.','Peter Drucker'],
+ ['Eu implemento!','Palavras são opiniões, não fatos. Ação é a única verdade.','Princípio do estoicismo'],
+ ['Eu confio!','Se tu o desejas, podes voar, só tens de confiar muito em ti.','Steve Jobs'],
+ ['Eu recebo!','Há mais felicidade em dar do que receber.','Jesus Cristo'],
+ ['Eu reconheço!','Aquele que nunca viu a tristeza nunca reconhecerá a alegria.','Khalil Gibran']
+];
+const mdoc=m=>'m'+pad(m+1);
+const dk=(m,d)=>`d${pad(d)}`;
+function monthWeeks(m){const days=new Date(YEAR,m+1,0).getDate(),weeks=[];let cur=[];for(let d=1;d<=days;d++){const dow=new Date(YEAR,m,d).getDay();cur.push(d);if(dow===0||d===days){weeks.push(cur);cur=[]}}return weeks}
+MONTHS.forEach((M,m)=>page({id:MES_ID[m],grp:'month',title:MES[m],doc:mdoc(m),month:m,render(){
+ const doc=mdoc(m),days=new Date(YEAR,m+1,0).getDate(),first=(new Date(YEAR,m,1).getDay()+6)%7;
+ let cal='<div class="cal">'+['SEG','TER','QUA','QUI','SEX','SÁB','DOM'].map(x=>`<div class="h">${x}</div>`).join('')+'<div></div>'.repeat(first);
+ const hl=[];for(let d=1;d<=days;d++){const key=`${YEAR}-${pad(m+1)}-${pad(d)}`,dow=new Date(YEAR,m,d).getDay(),mo=g(doc,dk(m,d)+'_h'),mc=MOOD.find(x=>x[0]===mo);if(HOL[key])hl.push(`<b>${d}</b> ${HOL[key]}`);
+  cal+=`<a href="#${MES_ID[m]}" data-goday="${d}" class="${HOL[key]?'hol':''} ${dow===0||dow===6?'wk':''} ${key===todayKey?'today':''}" title="${HOL[key]||''}">${d}${mc?`<span class="m" style="background:${mc[2]}"></span>`:''}</a>`}
+ cal+='</div>'+(hl.length?`<div class="hols">Feriados nacionais: ${hl.join(' · ')}</div>`:'');
+ const tab=WEEKTAB[m]||'all';
+ const weeks=monthWeeks(m);
+ const wsel=`<div class="tabs" id="wtabs"><button data-wtab="plan" class="${tab==='plan'?'on':''}">Planejamento mensal</button>${weeks.map((w,i)=>`<button data-wtab="${i}" class="${String(tab)===String(i)?'on':''}">Semana ${i+1} · ${w[0]}–${w[w.length-1]}</button>`).join('')}<button data-wtab="all" class="${tab==='all'?'on':''}">Ver tudo</button></div>`;
+ D=doc;
+ const plan=sheet(h2('Planejamento mensal · '+MES[m])+goalsBlock(m)+
+   nlist('obj','Objetivos importantes que quero alcançar este mês:',3)+
+   nlist('tempo','Quanto tempo vou levar para alcançar esses objetivos:',3)+
+   yesno('comp','Eu me comprometo 100% para alcançar esses objetivos:')+
+   nlist('rec','Recompensas que vou dar a mim mesma quando alcançar esses objetivos:',3)+
+   nlist('fortes','Pontos fortes que eu tenho que podem me ajudar a alcançar esses objetivos:',3)+
+   `<div class="lbl" style="font-weight:600;margin-bottom:10px">Coisas que eu escolho começar a fazer e parar de fazer que vão me ajudar a alcançar meus objetivos:</div><div class="grid2"><div class="card">${nlist('comece','<span style="font-family:Montserrat;font-weight:800;color:var(--blue)">COMECE A FAZER</span>',3)}</div><div class="card">${nlist('pare','<span style="font-family:Montserrat;font-weight:800;color:#C23B3B">PARE DE FAZER</span>',3)}</div></div><div style="height:18px"></div>`+
+   nlist('hab','Novas habilidades/conhecimentos que me ajudarão a alcançar os objetivos desse mês:',3)+
+   nlist('acao','Ações que preciso tomar imediatamente para alcançar esses objetivos:',3,{ph:'Ação'})+
+   nlist('quem','Quem pode me ajudar a alcançar esses objetivos mais rápido:',3)+
+   h2('Meu progresso')+`<div class="grid2"><div>${ta('funciona','O que está funcionando',{rows:5})}</div><div>${ta('mudar','O que eu preciso mudar/melhorar',{rows:5})}</div></div>`);
+ const weekHTML=(w,i)=>sheet(`<div class="week"><h3>Planner Semanal</h3><div class="range">Semana ${i+1} · ${w[0]} a ${w[w.length-1]} de ${MES[m].toLowerCase()}</div>
+   <div class="grid2" style="margin-bottom:10px"><div class="card"><h4>Prioridades da semana</h4><div class="rows">${[1,2,3].map(k=>`<div class="row"><button type="button" class="ck ${g(doc,`w${i}_p${k}_ok`)?'on':''}" data-pick="w${i}_p${k}_ok" data-v="1" title="Feito">${g(doc,`w${i}_p${k}_ok`)?'✓':''}</button><input type="text" data-f="w${i}_p${k}" value="${esc(g(doc,`w${i}_p${k}`)||'')}" placeholder="Prioridade ${k}" style="background:#fff"></div>`).join('')}</div></div>
+   <div class="card"><h4>Revisão da semana</h4><textarea data-f="w${i}_rev" rows="4" placeholder="O que funcionou? O que levo para a próxima semana?" style="background-color:#fff">${esc(g(doc,`w${i}_rev`)||'')}</textarea></div></div>${w.map(d=>{const key=`${YEAR}-${pad(m+1)}-${pad(d)}`,dw=new Date(YEAR,m,d).getDay(),b=dk(m,d),tv=g(doc,b+'_t'),hv=g(doc,b+'_h');
+   return `<div class="day ${key===todayKey?'is-today':''}" id="dia-${d}"><div><div class="dt">${DOWL[dw]}, ${pad(d)}/${pad(m+1)}${HOL[key]?`<span class="tag">${HOL[key]}</span>`:''}${key===todayKey?'<span class="tag tg2">hoje</span>':''}</div><div class="mini-l">Afirmação do dia</div><textarea data-f="${b}_a" rows="2" placeholder="Eu sou…">${esc(g(doc,b+'_a')||'')}</textarea><div class="mini-l" style="margin-top:8px">Prioridades & notas</div><textarea data-f="${b}_n" rows="2" placeholder="O que importa hoje?">${esc(g(doc,b+'_n')||'')}</textarea></div>
+   <div><div class="mini-l">Tempo</div><div class="icons">${W.map(x=>`<button type="button" data-pick="${b}_t" data-v="${x[0]}" title="${x[1]}" aria-label="${x[1]}" class="${tv===x[0]?'on':''}">${svgI(x[2])}</button>`).join('')}</div>
+   <div class="mini-l">Humor</div><div class="icons">${MOOD.map(x=>`<button type="button" data-pick="${b}_h" data-v="${x[0]}" title="${x[1]}" aria-label="${x[1]}" class="${hv===x[0]?'on':''}">${svgI(x[3])}</button>`).join('')}</div></div></div>`}).join('')}</div>`);
+ let body='';if(tab==='plan')body=plan;else if(tab==='all')body=plan+weeks.map(weekHTML).join('');else body=weekHTML(weeks[+tab],+tab);
+ return `<div class="hero">${stars(100+m*7,[[0,0],[1,1]])}<div class="kicker">${MES[m].toUpperCase()}</div><div class="script">${M[0]}</div><div class="quote">${M[1]}<small>${M[2]}</small></div></div>`+sheet(`<div class="grid2" style="align-items:start"><div>${h2(MES[m]+' de '+YEAR)}${cal}</div><div>${h2('Foco do mês')}${ta('foco','',{rows:3,ph:'Uma frase que resume o que você quer viver em '+MES[m].toLowerCase()+'…'})}<div class="hint">Toque em um dia do calendário para ir direto a ele. Os pontinhos coloridos mostram o seu humor registrado.</div></div></div>`)+wsel+body}}));
+const WEEKTAB={};
+const TRI=[['1º trimestre','janeiro a março',[0,1,2]],['2º trimestre','abril a junho',[3,4,5]],['3º trimestre','julho a setembro',[6,7,8]],['4º trimestre','outubro a dezembro',[9,10,11]]];
+TRI.forEach((T,q)=>{const pg=page({id:'revisao-'+(q+1)+'tri',grp:'Revisões trimestrais',title:'Revisão · '+T[0],doc:'rev',countable:true,render(){
+ const gs=goals(),pre='t'+(q+1)+'_';
+ const moods={};let days=0;T[2].forEach(m=>{const dim=new Date(YEAR,m+1,0).getDate();for(let d=1;d<=dim;d++){const h=g(mdoc(m),dk(m,d)+'_h');if(h){moods[h]=(moods[h]||0)+1;days++}}});
+ const recap=gs.length?gs.map(x=>{const lines=T[2].map(m=>{const v=g(mdoc(m),'ob_'+x.i);return v?`<li><b>${MES[m]}:</b> ${esc(v)}</li>`:''}).join('');return lines?`<div style="margin-bottom:8px"><b style="color:var(--blue-d)">${esc(x.t)}</b><ul style="margin:4px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px">${lines}</ul></div>`:''}).join(''):'';
+ return hero('Revisão do<br>'+T[0],'Pare, respire e olhe para '+T[1]+'. Revisar é o que transforma o planejamento em realização.',200+q*9)+
+ sheet(h2('Como foram os meses')+`<div class="grid2"><div><div class="stat"><b>${days}</b><span>dias com humor registrado no trimestre</span></div><div class="legend">${MOOD.filter(x=>moods[x[0]]).map(x=>`<span><i style="background:${x[2]}"></i>${x[1]} · ${moods[x[0]]}</span>`).join('')||'<span>Nenhum humor registrado ainda.</span>'}</div></div><div>${recap||'<div class="hint">Os compromissos mensais com seus objetivos aparecem aqui quando você preencher “Meus objetivos de 2027 neste mês”.</div>'}</div></div>`)+
+ sheet(h2('Meus grandes objetivos')+(gs.length?gs.map(x=>`<div class="card" style="margin-bottom:14px"><h4>${x.foco?'★ ':''}${esc(x.t)}</h4>${scale(pre+'g'+x.i,'De 0 a 10, quanto eu avancei neste objetivo?')}${ta(pre+'g'+x.i+'_ok','O que me fez avançar?',{rows:2})}${ta(pre+'g'+x.i+'_aj','O que vou ajustar no próximo trimestre?',{rows:2})}</div>`).join(''):`<div class="hint">Defina seus 3 grandes objetivos em <a href="#sonhar">Sonhar e Projetar</a> para avaliá-los aqui.</div>`))+
+ sheet(h2('Olhando para mim')+scale(pre+'geral','De 0 a 10, como eu avalio este trimestre como um todo?')+ta(pre+'orgulho','Do que eu mais me orgulho neste trimestre?')+ta(pre+'aprendi','Qual foi o maior aprendizado?')+ta(pre+'largar','O que eu escolho deixar para trás?')+
+  (q<3?ta(pre+'foco','Qual é o meu foco para o '+TRI[q+1][0]+'?'):ta(pre+'foco','Como eu quero fechar 2027? (Depois, abra a sua Carta ao Futuro 💙)')))}});
+ const after=P.findIndex(x=>x.month===T[2][2]);P.splice(P.indexOf(pg),1);P.splice(after+1,0,pg)});
+
+page({id:'listas',grp:'Extras',title:'Listas',doc:'listas',render(){
+ const tab=LTAB.t;const L={livros:'Lista de livros',series:'Lista de séries',filmes:'Lista de filmes'};
+ const items=g('listas',tab)||[];
+ return hero('Listas','',140)+`<div class="tabs">${Object.keys(L).map(k=>`<button data-ltab="${k}" class="${k===tab?'on':''}">${L[k]} · ${(g('listas',k)||[]).filter(x=>x.d).length}/${(g('listas',k)||[]).length}</button>`).join('')}</div>`+
+ sheet(h2(L[tab])+`<div class="list">${items.map((it,i)=>`<div class="li ${it.d?'done':''}"><button class="ck ${it.d?'on':''}" data-lck="${i}" title="Marcar como concluído">${it.d?'✓':''}</button><input type="text" data-litem="${i}" value="${esc(it.t||'')}" placeholder="Título"><div class="rate">${[1,2,3,4,5].map(s=>`<button data-lrate="${i}" data-v="${s}" class="${(it.r||0)>=s?'on':''}">★</button>`).join('')}</div><button class="del" data-ldel="${i}" title="Remover">×</button></div>`).join('')}</div>
+ <form id="laddf" style="display:flex;gap:8px;margin-top:14px"><input type="text" id="ladd" placeholder="Adicionar ${tab==='livros'?'livro':tab==='series'?'série':'filme'}…"><button class="btn" type="submit">Adicionar</button></form>`)}});
+const LTAB={t:'livros'};
+
+page({id:'meu-ano',grp:'Extras',title:'Meu ano em resumo',doc:null,render(){
+ let heat='<div class="heat"><div></div>'+Array.from({length:31},(_,i)=>`<div style="text-align:center;color:var(--ink-2)">${(i+1)%5===0||i===0?i+1:''}</div>`).join('');
+ const mc={},wc={};let afs=0;
+ for(let m=0;m<12;m++){heat+=`<div class="ml">${MES[m].slice(0,3)}</div>`;const dim=new Date(YEAR,m+1,0).getDate();for(let d=1;d<=31;d++){if(d>dim){heat+='<div class="c x"></div>';continue}const b=dk(m,d),h=g(mdoc(m),b+'_h'),t=g(mdoc(m),b+'_t'),x=MOOD.find(q=>q[0]===h);if(h)mc[h]=(mc[h]||0)+1;if(t)wc[t]=(wc[t]||0)+1;if(g(mdoc(m),b+'_a'))afs++;heat+=`<a href="#${MES_ID[m]}" data-goday="${d}" data-gom="${m}" class="c" title="${pad(d)}/${pad(m+1)}${x?' · '+x[1]:''}" style="${x?'background:'+x[2]:''}"></a>`}}
+ heat+='</div>';
+ const tot=Object.values(mc).reduce((a,b)=>a+b,0);
+ const prog=P.filter(p=>p.countable).map(p=>{const c=pageProgress(p);return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13.5px"><a href="#${p.id}" style="text-decoration:none;font-weight:600">${p.title}</a><span style="color:var(--ink-2)">${c.f}/${c.t}</span></div><div class="prog"><b style="width:${c.t?Math.round(c.f/c.t*100):0}%"></b></div></div>`}).join('');
+ const objs=[1,2,3].map(i=>g('sonhar','s1_'+i)).filter(Boolean),foco=g('sonhar','s1foco');
+ return hero('Meu ano<br>em resumo','',150)+sheet(`<div class="grid3"><div class="stat"><b>${tot}</b><span>dias com humor registrado</span></div><div class="stat"><b>${afs}</b><span>afirmações do dia escritas</span></div><div class="stat"><b>${['livros','series','filmes'].reduce((a,k)=>a+(g('listas',k)||[]).filter(x=>x.d).length,0)}</b><span>livros, séries e filmes concluídos</span></div></div>`)+
+ sheet(h2('Mapa do humor 2027')+`<div style="overflow-x:auto"><div style="min-width:560px">${heat}</div></div><div class="legend">${MOOD.map(x=>`<span><i style="background:${x[2]}"></i>${x[1]}${mc[x[0]]?' · '+mc[x[0]]:''}</span>`).join('')}</div>`+
+  (Object.keys(wc).length?`<div class="legend" style="margin-top:6px">${W.map(x=>wc[x[0]]?`<span style="color:var(--ink)">${svgI(x[2]).replace('<svg','<svg width="16" height="16"')} ${x[1]}: ${wc[x[0]]}</span>`:'').join('')}</div>`:''))+
+ (objs.length?sheet(h2('Meus 3 grandes objetivos')+objs.map((o,i)=>`<p style="margin:0 0 8px">${foco==i+1?'★ ':''}<b>${esc(o)}</b>${g('sonhar','s1_'+(i+1)+'_d')?` <span style="color:var(--ink-2)">— até ${g('sonhar','s1_'+(i+1)+'_d').split('-').reverse().join('/')}</span>`:''}</p>`).join('')):'')+
+ (objs.length?sheet(h2('Evolução nas revisões trimestrais')+`<div style="overflow-x:auto"><table class="fin"><thead><tr><th>Objetivo</th>${TRI.map(t=>`<th style="text-align:center">${t[0].replace('º trimestre','º tri')}</th>`).join('')}</tr></thead><tbody>${goals().map(x=>`<tr><td style="font-weight:600">${esc(x.t)}</td>${[1,2,3,4].map(q=>{const v=g('rev','t'+q+'_g'+x.i);return `<td style="text-align:center;font-family:Montserrat;font-weight:800;color:var(--blue)">${v===undefined||v===''?'<span style="color:#C9D2DE">–</span>':v}</td>`}).join('')}</tr>`).join('')}<tr><td style="color:var(--ink-2)">Trimestre como um todo</td>${[1,2,3,4].map(q=>{const v=g('rev','t'+q+'_geral');return `<td style="text-align:center;font-family:Montserrat;font-weight:800;color:var(--ink-2)">${v===undefined||v===''?'<span style="color:#C9D2DE">–</span>':v}</td>`}).join('')}</tr></tbody></table></div>`):'')+
+ sheet(h2('Quanto do planner você já preencheu')+prog)+
+ sheet(h2('Cópia de segurança')+`<div class="intro"><p>Seu planner já salva sozinho${mode==='cloud'?' e sincroniza com a sua conta':' neste aparelho'}. Se quiser guardar uma cópia extra, baixe o backup — e para restaurar, use “Restaurar de uma cópia”.</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-act="download">Baixar backup (.json)</button><button class="btn ghost" data-act="copy">Copiar meus dados</button><button class="btn ghost" data-act="import">Restaurar de uma cópia</button></div>`)}});
+
+P.forEach(p=>{if(['retro','sonhar'].includes(p.doc))p.countable=true});
+function pageProgress(p){const old=D;D=p.doc;const html=p.render();D=old;const ids=[...new Set([...html.matchAll(/data-(?:f|pick)="([^"]+)"/g)].map(x=>x[1]))].filter(f=>!/_d$/.test(f));const f=ids.filter(i=>{const v=g(p.doc,i);return v!==undefined&&v!==''&&v!==null}).length;return {f,t:ids.length}}
+
+/* ============ nav & routing ============ */
+function navHTML(cur){const groups={};P.forEach(p=>{const k=p.grp||'_';(groups[k]=groups[k]||[]).push(p)});
+ let h='';for(const k in groups){if(k==='month'){h+=`<div class="grp">Meses de 2027</div><div class="months">${groups[k].map(p=>{const m=p.month,dim=new Date(YEAR,m+1,0).getDate();let c=0;for(let d=1;d<=dim;d++)if(g(mdoc(m),dk(m,d)+'_h'))c++;return `<a href="#${p.id}" class="${p.id===cur?'on':''}">${p.title.slice(0,3)}${c?`<span class="dot" style="width:${Math.max(4,Math.round(c/dim*26))}px"></span>`:''}</a>`}).join('')}</div>`;continue}
+  if(k!=='_')h+=`<div class="grp">${k}</div>`;
+  h+=groups[k].map(p=>{let r='';if(p.countable){const c=pageProgress(p);r=`<span class="bar"><b style="width:${c.t?Math.round(c.f/c.t*100):0}%"></b></span>`}return `<a href="#${p.id}" class="${p.id===cur?'on':''}"><span>${p.title}</span>${r}</a>`}).join('')}
+ return h}
+let curId=null;
+function route(scroll=true){const id=(location.hash||'#capa').slice(1);const p=P.find(x=>x.id===id)||P[0];curId=p.id;D=p.doc||'misc';
+ const i=P.indexOf(p),prev=P[i-1],next=P[i+1];
+ $('#page').innerHTML=(p.doc==='retro'?modeSwitch():'')+p.render()+`<div class="pager">${prev?`<a href="#${prev.id}"><small>← anterior</small><b>${prev.title}</b></a>`:'<span></span>'}${next?`<a class="nx" href="#${next.id}"><small>próximo →</small><b>${next.title}</b></a>`:'<span></span>'}</div>`;
+ D=p.doc||'misc';
+ $('#nav').innerHTML=navHTML(p.id);
+ document.querySelectorAll('#page textarea').forEach(autosize);
+ document.querySelectorAll('#page h2.sec').forEach(h=>{const n=h.nextElementSibling;if(!n||n.matches('h2.sec,.banner'))h.remove()});
+ if(scroll)window.scrollTo(0,0);
+ $('#side').classList.remove('open');$('#scrim').classList.remove('on')}
+function rerender(){const y=window.scrollY;const a=document.activeElement;const af=a&&a.dataset?a.dataset.f:null;route(false);window.scrollTo(0,y);if(af){const e=document.querySelector(`[data-f="${af}"]`);if(e&&e.tagName!=='BUTTON')e.focus()}}
+window.addEventListener('hashchange',()=>route(true));
+function autosize(t){t.style.height='auto';t.style.height=Math.max(t.scrollHeight+2,t.rows*24+22)+'px'}
+let navT=null;function refreshNav(){clearTimeout(navT);navT=setTimeout(()=>{$('#nav').innerHTML=navHTML(curId)},600)}
+
+/* ============ events ============ */
+const pageEl=$('#page');
+pageEl.addEventListener('input',e=>{const t=e.target;
+ if(t.dataset.f){setv(D,t.dataset.f,t.value);if(t.tagName==='TEXTAREA')autosize(t);
+   if(t.dataset.roda){$('#rv'+t.dataset.roda).textContent=t.value;$('#rodaBox').innerHTML=rodaSVG()}
+   if(/^fin_/.test(t.dataset.f)&&$('#finTot'))$('#finTot').textContent=finTotal();
+   refreshNav();return}
+ if(t.dataset.dream){const items=g('sonhos','items')||[];const it=items.find(x=>x.id===t.dataset.dream);if(it){it.t=t.value;setv('sonhos','items',items)}return}
+ if(t.dataset.litem!==undefined){const a=g('listas',LTAB.t)||[];a[+t.dataset.litem].t=t.value;setv('listas',LTAB.t,a)}
+});
+pageEl.addEventListener('click',e=>{const b=e.target.closest('button,a');if(!b)return;
+ if(b.dataset.pick){const f=b.dataset.pick,v=b.dataset.v,cur=g(D,f);setv(D,f,String(cur)===v?'':v);
+   if(b.classList.contains('ck')){const on=String(cur)!==v;b.classList.toggle('on',on);b.textContent=on?'✓':''}else b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b&&String(cur)!==v));
+   if(f==='s1foco'||/_h$/.test(f)){refreshNav(); if(/_h$/.test(f)){const cal=document.querySelector('.cal');if(cal){const d=+f.slice(1,3);const a=cal.querySelector(`[data-goday="${d}"]`);if(a){let m=a.querySelector('.m');const mc=MOOD.find(x=>x[0]===g(D,f));if(mc){if(!m){m=document.createElement('span');m.className='m';a.appendChild(m)}m.style.background=mc[2]}else if(m)m.remove()}}}}
+   else refreshNav();return}
+ if(b.dataset.goday){e.preventDefault();if(b.dataset.gom!==undefined){const m=+b.dataset.gom;WEEKTAB[m]=weekOf(m,+b.dataset.goday);location.hash=MES_ID[m];setTimeout(()=>goDay(+b.dataset.goday),60);return}
+   const p=P.find(x=>x.id===curId);WEEKTAB[p.month]=weekOf(p.month,+b.dataset.goday);rerender();goDay(+b.dataset.goday);return}
+ if(b.dataset.wtab!==undefined){const p=P.find(x=>x.id===curId);WEEKTAB[p.month]=b.dataset.wtab;rerender();const w=$('#wtabs');if(w)w.scrollIntoView({behavior:'smooth',block:'start'});return}
+ if(b.dataset.ltab){LTAB.t=b.dataset.ltab;rerender();return}
+ if(b.dataset.mode){setv('prefs','retroMode',b.dataset.mode);rerender();refreshNav();return}
+ if(b.dataset.lck!==undefined){const a=g('listas',LTAB.t)||[];a[+b.dataset.lck].d=!a[+b.dataset.lck].d;setv('listas',LTAB.t,a);rerender();return}
+ if(b.dataset.lrate!==undefined){const a=g('listas',LTAB.t)||[];const it=a[+b.dataset.lrate],v=+b.dataset.v;it.r=it.r===v?0:v;setv('listas',LTAB.t,a);rerender();return}
+ if(b.dataset.ldel!==undefined){const a=g('listas',LTAB.t)||[];a.splice(+b.dataset.ldel,1);setv('listas',LTAB.t,a);rerender();return}
+ if(b.id==='addDream'){$('#fileIn').value='';ask('Novo sonho',`<p style="margin:0 0 12px;color:var(--ink-2)">Quer colocar uma foto?</p>`,[['Escolher foto',()=>$('#fileIn').click()],['Só texto',()=>addDream(null)]]);return}
+ if(b.dataset.deldream){const id=b.dataset.deldream;ask('Remover este sonho?','',[['Remover',()=>{const items=(g('sonhos','items')||[]).filter(x=>x.id!==id);setv('sonhos','items',items);if(S['img-'+id]){S['img-'+id]=null;markDirty('img-'+id)}rerender()}],['Cancelar',null]]);return}
+ const act=b.dataset.act;if(!act)return;
+ if(act==='seal'){if(!(g('carta','texto')||'').trim()){toast('Escreva sua carta antes de lacrar 💙');return}setv('carta','sealed',true);setv('carta','peek',false);rerender();toast('Carta lacrada até dezembro de 2027 ✉')}
+ if(act==='unseal'){setv('carta','sealed',false);rerender()}
+ if(act==='peek'){ask('Abrir a carta antes da hora?','<p style="margin:0 0 12px;color:var(--ink-2)">A ideia é lê-la só em dezembro de 2027. Tem certeza?</p>',[['Abrir mesmo assim',()=>{setv('carta','peek',true);rerender()}],['Deixar lacrada',null]])}
+ if(act==='download'){downloadBackup();toast('Backup baixado!')}
+ if(act==='copy'){const t=JSON.stringify(S);navigator.clipboard.writeText(t).then(()=>toast('Dados copiados! Cole em um arquivo de texto para guardar.'),()=>toast('Não consegui copiar automaticamente.'))}
+ if(act==='import'){ask('Restaurar de uma cópia','<p style="margin:0 0 8px;color:var(--ink-2)">Escolha o arquivo de backup ou cole o texto copiado. O que estiver nele substitui o conteúdo atual.</p><input type="file" id="impF" accept=".json,application/json" style="margin-bottom:8px"><textarea id="impT" rows="5" style="background-image:none"></textarea>',[['Restaurar',()=>{try{let o=JSON.parse($('#impT').value);if(o&&o.app==='planner2027')o=o.S;for(const k in o){S[k]=o[k];T[k]=Date.now();dirty.add(k)}flush();rerender();toast('Planner restaurado!')}catch(e){toast('Texto inválido — confira se copiou tudo.')}}],['Cancelar',null]],true);const fi=$('#impF');if(fi)fi.onchange=()=>{const f=fi.files[0];if(f)f.text().then(t=>{$('#impT').value=t})}}
+});
+pageEl.addEventListener('submit',e=>{if(e.target.id==='laddf'){e.preventDefault();const v=$('#ladd').value.trim();if(!v)return;const a=(g('listas',LTAB.t)||[]).slice();a.push({t:v,d:false,r:0});setv('listas',LTAB.t,a);rerender();setTimeout(()=>{const x=$('#ladd');if(x)x.focus()},0)}});
+function weekOf(m,d){return String(monthWeeks(m).findIndex(w=>w.includes(d)))}
+function goDay(d){const el=document.getElementById('dia-'+d);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});const t=el.querySelector('textarea');if(t)setTimeout(()=>t.focus({preventScroll:true}),400)}}
+$('#todayBtn').onclick=()=>{if(NOW.getFullYear()!==YEAR){if(NOW<new Date(YEAR,0,1)){location.hash='recapitular';toast('2027 ainda não começou — que tal a retrospectiva de 2026?')}else location.hash='meu-ano';return}const m=NOW.getMonth(),d=NOW.getDate();WEEKTAB[m]=weekOf(m,d);if(location.hash==='#'+MES_ID[m])rerender();else location.hash=MES_ID[m];setTimeout(()=>goDay(d),80)};
+$('#menuBtn').onclick=()=>{$('#side').classList.add('open');$('#scrim').classList.add('on')};
+$('#scrim').onclick=()=>{$('#side').classList.remove('open');$('#scrim').classList.remove('on')};
+function ask(title,body,btns,keepOpen){const mb=$('#modalBox');mb.innerHTML=`<h3>${title}</h3>${body}<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px">${btns.map((b,i)=>`<button class="btn ${i?'ghost':''}" data-mi="${i}">${b[0]}</button>`).join('')}</div>`;$('#modal').classList.add('on');
+ mb.querySelectorAll('[data-mi]').forEach(x=>x.onclick=()=>{const fn=btns[+x.dataset.mi][1];$('#modal').classList.remove('on');if(fn)fn()})}
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')$('#modal').classList.remove('on')});
+function addDream(src){const id='s'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);const items=(g('sonhos','items')||[]).slice();items.push({id,t:''});if(src){S['img-'+id]={src};markDirty('img-'+id)}setv('sonhos','items',items);rerender();setTimeout(()=>{const x=document.querySelector(`[data-dream="${id}"]`);if(x)x.focus()},50)}
+$('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=720,sc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);addDream(c.toDataURL('image/jpeg',.78))};img.onerror=()=>toast('Não consegui abrir essa imagem.');img.src=r.result};r.readAsDataURL(f)});
+
+/* ============ backup download ============ */
+function downloadBackup(){const blob=new Blob([JSON.stringify({app:'planner2027',saved:new Date().toISOString(),S,T})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='planner-2027-backup-'+todayKey+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+
+/* ============ auth ============ */
+let signup=false;
+function showAuth(on){$('#auth').classList.toggle('on',on);if(on){const r=rng(9);let st='';for(let i=0;i<70;i++){const x=r()*100,y=r()*100;if(x>25&&x<75&&y>20&&y<80)continue;st+=`<path d="${starPath(x,y,.5+r()*1.6)}" fill="${['#1E78C8','#4FA8E0','#9ED3F2','#B9C7D6'][Math.floor(r()*4)]}" opacity=".7"/>`}$('#authStars').innerHTML=st}}
+function acctLine(){const e=$('#acct');if(mode==='cloud'&&session)e.innerHTML=`${esc(session.user.email)} <button id="logout">sair</button>`;else if(sb)e.innerHTML=`Só neste aparelho <button id="login">entrar para sincronizar</button>`;else e.textContent='';
+  const lo=$('#logout');if(lo)lo.onclick=()=>ask('Sair da conta?','<p style="margin:0 0 12px;color:var(--ink-2)">Seus dados continuam na nuvem. Neste aparelho, o planner fica vazio até você entrar de novo.</p>',[['Sair',async()=>{await flush();await sb.auth.signOut();for(const k in S)delete S[k];for(const k in T)delete T[k];dirty.clear();try{localStorage.removeItem(LS);localStorage.removeItem(LST);localStorage.removeItem(LSQ);localStorage.removeItem(LSM)}catch(e){}location.reload()}],['Cancelar',null]]);
+  const li=$('#login');if(li)li.onclick=()=>showAuth(true)}
+$('#authToggle').onclick=()=>{signup=!signup;$('#authGo').textContent=signup?'Criar conta':'Entrar';$('#authToggle').textContent=signup?'Já tenho conta · entrar':'Primeira vez? Criar minha conta';$('#authPass').autocomplete=signup?'new-password':'current-password';$('#authErr').textContent=''};
+$('#authLocal').onclick=()=>{try{localStorage.setItem(LSM,'local')}catch(e){}mode='local';showAuth(false);acctLine();idleStatus()};
+$('#authForm').addEventListener('submit',async e=>{e.preventDefault();const email=$('#authEmail').value.trim(),password=$('#authPass').value;$('#authErr').textContent='';$('#authGo').disabled=true;$('#authGo').textContent='Aguarde…';
+  try{const r=signup?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
+    if(r.error)throw r.error;
+    if(!r.data.session){$('#authErr').style.color='var(--blue-d)';$('#authErr').textContent='Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre.';signup=false}
+  }catch(err){const m=String(err.message||err);$('#authErr').style.color='';$('#authErr').textContent=/Invalid login/i.test(m)?'E-mail ou senha incorretos.':/already registered/i.test(m)?'Este e-mail já tem conta — use Entrar.':/fetch|network/i.test(m)?'Sem conexão com a internet.':m}
+  $('#authGo').disabled=false;$('#authGo').textContent=signup?'Criar conta':'Entrar'});
+async function onSession(sess){session=sess;if(sess){mode='cloud';try{localStorage.removeItem(LSM)}catch(e){}showAuth(false);acctLine();status('busy','Sincronizando…');await pull();idleStatus();rerender()}else acctLine()}
+
+/* ============ install (PWA) ============ */
+let deferred=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#installBtn').classList.add('on')});
+$('#installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('#installBtn').classList.remove('on')};
+window.addEventListener('appinstalled',()=>{$('#installBtn').classList.remove('on');toast('App instalado! 💙')});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
+/* ============ boot ============ */
+loadLocal();route(false);idleStatus();
+(async()=>{
+ if(CFG.url&&CFG.key&&window.supabase){
+  sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true}});
+  const {data}=await sb.auth.getSession();
+  sb.auth.onAuthStateChange((ev,sess)=>{if(ev==='SIGNED_IN'&&(!session||session.user.id!==sess.user.id))onSession(sess);else if(sess)session=sess});
+  let localPref=null;try{localPref=localStorage.getItem(LSM)}catch(e){}
+  if(data.session)await onSession(data.session);
+  else{acctLine();if(localPref!=='local')showAuth(true)}
+ }
+ const l=$('#loading');if(l)l.remove();
+})();
+})();
+</script>
+</body>
+</html>
